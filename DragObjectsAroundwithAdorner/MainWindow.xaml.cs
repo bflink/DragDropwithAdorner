@@ -25,6 +25,7 @@ namespace DragObjectsAroundwithAdorner
             InitializeComponent();
 
             //comment added here
+            //another comment added here.
         }
     }
 }
