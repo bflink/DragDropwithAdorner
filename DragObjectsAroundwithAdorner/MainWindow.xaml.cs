@@ -23,9 +23,6 @@ namespace DragObjectsAroundwithAdorner
         public MainWindow()
         {
             InitializeComponent();
-
-            //comment added here
-            //another comment added here.
         }
     }
 }
