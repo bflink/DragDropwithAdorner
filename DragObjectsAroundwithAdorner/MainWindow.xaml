@@ -6,23 +6,27 @@
         xmlns:local="clr-namespace:DragObjectsAroundwithAdorner"
         mc:Ignorable="d"
         Title="MainWindow" Height="350" Width="525">
-    <Grid x:Name="theGrid">
+    <Grid x:Name="theGrid" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition/>
             <RowDefinition/>
             <RowDefinition/>
             <RowDefinition/>
         </Grid.RowDefinitions>
-        <local:RectangleDragDecorator Grid.Row="0">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <local:RectangleDragDecorator Width="100" Grid.Row="0" Grid.Column="1">
             <Rectangle x:Name="redRectangle" Fill="Red"/>
         </local:RectangleDragDecorator>
-        <local:RectangleDragDecorator Grid.Row="1">
+        <local:RectangleDragDecorator Width="100" Grid.Column="1" Grid.Row="1">
             <Rectangle x:Name="blueRectangle" Fill="Blue"/>
         </local:RectangleDragDecorator>
-        <local:RectangleDragDecorator Grid.Row="2">
+        <local:RectangleDragDecorator Width="100" Grid.Column="1" Grid.Row="2">
             <Rectangle x:Name="greenRectangle" Fill="Green"/>
         </local:RectangleDragDecorator>
-        <local:RectangleDragDecorator Grid.Row="3">
+        <local:RectangleDragDecorator Grid.Row="3" Width="100" Grid.Column="1">
             <Rectangle x:Name="yellowRectangle"  Fill="Yellow"/>
         </local:RectangleDragDecorator>
     </Grid>

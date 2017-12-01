@@ -14,16 +14,25 @@ namespace DragObjectsAroundwithAdorner
 {
     public class RectangleDragDecorator : BaseDecorator
     {
-        private VisualBrushDragAdorner _visualBrushDragAdorner;
+        private VisualBrushDragAdorner _adorner;
         private bool _isMouseDown;
         private object _data;
         private Point _dragStartPosition;
-        private bool _isDragging;
+        private Point _adornerStartPosition;
+        private bool _isDragging = false;
+        private bool _dragHasLeftScope;
+        public bool IsDragging { get; private set; }
+        AdornerLayer _layer;
+        FrameworkElement DragScope;
 
         public RectangleDragDecorator() : base()
         {
             _isDragging = false;
             _isMouseDown = false;
+            IsDragging = false;
+
+           
+
 
             this.Loaded += new RoutedEventHandler(DraggableRectangle_Loaded);
         }
@@ -35,7 +44,7 @@ namespace DragObjectsAroundwithAdorner
                 throw new InvalidCastException(string.Format("ItemsControlDragDecorator cannot have child of type {0}", Child.GetType()));
             }
             Rectangle myRectangle = (Rectangle)DecoratedUIElement;
-            myRectangle.AllowDrop = false;
+            myRectangle.AllowDrop = true;
             myRectangle.PreviewMouseLeftButtonDown += new System.Windows.Input.MouseButtonEventHandler(DraggableRectangle_PreviewMouseLeftButtonDown);
             myRectangle.PreviewMouseMove += new System.Windows.Input.MouseEventHandler(DraggableRectangle_PreviewMouseMove);
             myRectangle.PreviewMouseLeftButtonUp += new System.Windows.Input.MouseButtonEventHandler(DraggableRectangle_PreviewMouseLeftButtonUp);
@@ -44,85 +53,116 @@ namespace DragObjectsAroundwithAdorner
             myRectangle.PreviewDragEnter += new DragEventHandler(DraggableRectangle_PreviewDragEnter);
             myRectangle.PreviewDragOver += new DragEventHandler(DraggableRectangle_PreviewDragOver);
             myRectangle.DragLeave += new DragEventHandler(DraggableRectangle_DragLeave);
+
+            _adornerStartPosition = myRectangle.PointToScreen(new Point());
+            Rect rTemp = myRectangle.GetAbsolutePlacement(false);
+            _adornerStartPosition = rTemp.TopLeft;
+            
         }
 
        
 
         private void DraggableRectangle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            Rectangle sourceRectangle = sender as Rectangle;
-            if(sender != null)
-            {
-                Point p = e.GetPosition(sourceRectangle);
-                _isMouseDown = true;
-                _dragStartPosition = p;
-
-            }
+           
         }
 
         private void DraggableRectangle_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            
-            if (_isMouseDown && _isDragging == false)
+            if (e.LeftButton == MouseButtonState.Pressed && IsDragging == false)
             {
-                Console.WriteLine("Mouse is down, dragging has not started");
-                Rectangle sourceRectangle = sender as Rectangle ;
-                if(sourceRectangle != null)
-                {
-                    Point currentPosition = e.GetPosition(sourceRectangle);
-                    if( (_isDragging == false) && (Math.Abs(currentPosition.X - _dragStartPosition.X)> SystemParameters.MinimumHorizontalDragDistance)  ||
-                        (Math.Abs(currentPosition.Y - _dragStartPosition.Y) > SystemParameters.MinimumVerticalDragDistance)  )
-                    {
-                        Console.WriteLine("Starting Drag");
-                        sourceRectangle.CaptureMouse();
-                        _isDragging = true;
-                        InitializeDragAdorner(sourceRectangle, e.GetPosition(sourceRectangle));
-
-                    }
-                }
-
+                Console.WriteLine("Calling Drag Method");
+                StartDragInProcAdorner(e);
             }
-            else if(_isMouseDown && _isDragging == true)
-            {
-                
 
-
-                Console.Write(".");
-               
-                Rectangle sourceRectangle = sender as Rectangle;
-                if(sourceRectangle != null)
-                {
-                    Point pt = e.GetPosition(sourceRectangle);
-                    pt.X -= sourceRectangle.ActualWidth/2;
-                    pt.Y -= sourceRectangle.ActualHeight / 2;
-                    UpdateDragAdorner(pt);
-                    //This is a drag operation  lets check what we are dragging over
-                    hitResultsList.Clear();
-                    //VisualTreeHelper.HitTest(Application.Current.MainWindow, MyHitTestFilter, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(pt));
-                    VisualTreeHelper.HitTest(Application.Current.MainWindow, null, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(e.MouseDevice.GetPosition(Application.Current.MainWindow)));
-
-                    if (hitResultsList.Count == 1)
-                    {
-                        string hits = "";
-                        foreach(var hit in hitResultsList)
-                        {
-                           // hits = hits + " " + (hit as Shape).Name;
-                        }
-                        
-                        Console.WriteLine("Mouse Moving : {0} " + hits,hitResultsList.Count);
-                        //HitTestResult topElement = VisualTreeHelper.HitTest(Application.Current.MainWindow, e.MouseDevice.GetPosition(Application.Current.MainWindow));
-
-                        Rectangle newRect = (hitResultsList[0]) as Rectangle;
-                        Console.WriteLine(newRect.Name);
-                    }
-
-                }
-
-
-            }
         }
 
-       
+        private void StartDragInProcAdorner(MouseEventArgs e)
+        {
+            // Let's define our DragScope .. In this case it is every thing inside our main window ..
+
+            DragScope = Application.Current.MainWindow.Content as FrameworkElement;
+
+
+            // We enable Drag & Drop in our scope ...  We are not implementing Drop, so it is OK, but this allows us to get DragOver
+
+            bool previousDrop = DragScope.AllowDrop;
+             DragScope.AllowDrop = true;
+
+            // The DragOver event for the window
+            DragEventHandler draghandler = new DragEventHandler(Window1_DragOver);
+            DragScope.PreviewDragOver += draghandler;
+
+            // ThE Give Feedback handler for the window
+            GiveFeedbackEventHandler givefeedbackhandler = new GiveFeedbackEventHandler(Window1_GiveFeedback);
+            DragScope.GiveFeedback += givefeedbackhandler;
+
+            DragEventHandler dragleavehandler = new DragEventHandler(DragScope_DragLeave);
+            DragScope.DragLeave += dragleavehandler;
+
+
+            // QueryContinue Drag goes with drag leave...
+            QueryContinueDragEventHandler queryhandler = new QueryContinueDragEventHandler(DragScope_QueryContinueDrag);
+            DragScope.QueryContinueDrag += queryhandler;
+
+            DataObject data = new DataObject();
+            data.SetData(DataFormats.StringFormat, Name.ToString());
+            // data.SetData("Double", Name.Height);
+            data.SetData("Object", this);
+
+            //Here we create our adorner..
+
+            _adorner = new VisualBrushDragAdorner(DragScope, (UIElement)this.Child, true, 1.0);
+            _layer = AdornerLayer.GetAdornerLayer(DragScope as Visual);
+            _layer.Add(_adorner);
+
+            System.Windows.Point pt = e.GetPosition(Application.Current.MainWindow);
+            _adorner.UpdatePosition(pt.X - _adornerStartPosition.X, pt.Y - _adornerStartPosition.Y, _layer);
+
+            IsDragging = true;
+            _dragHasLeftScope = false;
+
+            // Inititate the drag-and-drop operation.
+            Console.WriteLine("Starting Drag");
+            data = new DataObject(System.Windows.DataFormats.Text.ToString(), "abcd");
+            DragDropEffects de = DragDrop.DoDragDrop(this, data, DragDropEffects.Copy | DragDropEffects.Move);
+
+            // Clean up our mess 🙂
+
+            DragScope.AllowDrop = previousDrop;
+            AdornerLayer.GetAdornerLayer(DragScope).Remove(_adorner);
+            _adorner = null;
+
+
+            //  DragSource.GiveFeedback -= feedbackhandler;
+
+            DragScope.DragLeave -= dragleavehandler;
+            DragScope.QueryContinueDrag -= queryhandler;
+            DragScope.PreviewDragOver -= draghandler;
+            IsDragging = false;
+
+        }
+
+        private void Window1_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+        {
+           
+        }
+
+        private void DragScope_QueryContinueDrag(object sender, QueryContinueDragEventArgs e)
+        {
+
+        }
+
+        private void DragScope_DragLeave(object sender, DragEventArgs e)
+        {
+
+        }
+
+        private void Window1_DragOver(object sender, DragEventArgs e)
+        {
+            System.Windows.Point pt = e.GetPosition(DragScope);
+            _adorner.UpdatePosition(pt.X - _adornerStartPosition.X, pt.Y - _adornerStartPosition.Y, _layer);
+        }
 
         private void DraggableRectangle_DragLeave(object sender, DragEventArgs e)
         {
@@ -154,36 +194,36 @@ namespace DragObjectsAroundwithAdorner
 
         private void DraggableRectangle_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            Console.WriteLine("Mouse Up... releaseing mouse");
-            UIElement el = (UIElement)sender;
+            //Console.WriteLine("Mouse Up... releaseing mouse");
+            //UIElement el = (UIElement)sender;
             
 
-            Point pt = e.GetPosition(el);
+            //Point pt = e.GetPosition(el);
 
-            hitResultsList.Clear();
+            //hitResultsList.Clear();
 
-            //VisualTreeHelper.HitTest(Application.Current.MainWindow, MyHitTestFilter, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(pt));
-            //VisualTreeHelper.HitTest(Application.Current.MainWindow, MyHitTestFilter, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(e.MouseDevice.GetPosition(Application.Current.MainWindow)));
-            VisualTreeHelper.HitTest(Application.Current.MainWindow, null, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(e.MouseDevice.GetPosition(Application.Current.MainWindow)));
+            ////VisualTreeHelper.HitTest(Application.Current.MainWindow, MyHitTestFilter, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(pt));
+            ////VisualTreeHelper.HitTest(Application.Current.MainWindow, MyHitTestFilter, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(e.MouseDevice.GetPosition(Application.Current.MainWindow)));
+            //VisualTreeHelper.HitTest(Application.Current.MainWindow, null, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(e.MouseDevice.GetPosition(Application.Current.MainWindow)));
 
-            if (hitResultsList.Count > 1)
-            {
-                Rectangle theRect = hitResultsList[1] as Rectangle;
-              //  Console.WriteLine("Underlying Rect: " + theRect.Name);
-            }
+            //if (hitResultsList.Count > 1)
+            //{
+            //    Rectangle theRect = hitResultsList[1] as Rectangle;
+            //  //  Console.WriteLine("Underlying Rect: " + theRect.Name);
+            //}
             
-            var underElement = e.MouseDevice.DirectlyOver as Rectangle;
-            Console.WriteLine("Mouse is over element: {0}", underElement.Name);
+            //var underElement = e.MouseDevice.DirectlyOver as Rectangle;
+            //Console.WriteLine("Mouse is over element: {0}", underElement.Name);
 
-            HitTestResult topElement = VisualTreeHelper.HitTest(Application.Current.MainWindow, e.MouseDevice.GetPosition(Application.Current.MainWindow));
+            //HitTestResult topElement = VisualTreeHelper.HitTest(Application.Current.MainWindow, e.MouseDevice.GetPosition(Application.Current.MainWindow));
             
-            Rectangle newRect = (topElement.VisualHit) as Rectangle;
-            Console.WriteLine(newRect.Name);
+            //Rectangle newRect = (topElement.VisualHit) as Rectangle;
+            //Console.WriteLine(newRect.Name);
 
-            el.ReleaseMouseCapture();
-            ResetState((Rectangle)sender);
-            DetachDragAdorner();
-            e.Handled = true;
+            //el.ReleaseMouseCapture();
+            //ResetState((Rectangle)sender);
+            //DetachDragAdorner();
+            //e.Handled = true;
            
         }
 
@@ -217,33 +257,17 @@ namespace DragObjectsAroundwithAdorner
 
         private void DragStarted(Rectangle sourceRectangle)
         {
-            Console.WriteLine("In Drag Started");
+            Console.WriteLine("In DragStarted ()");
 
             _isDragging = true;
       
         }
 
 
-        private void InitializeDragAdorner(Rectangle sourceRectangle, Point point)
-        {
-            if(_visualBrushDragAdorner == null)
-            {
-                var adornerLayer = AdornerLayer.GetAdornerLayer(sourceRectangle);
-                adornerLayer.IsHitTestVisible = false;
-                _visualBrushDragAdorner = new VisualBrushDragAdorner(sourceRectangle, adornerLayer);
-                _visualBrushDragAdorner.UpdatePosition(point.X, point.Y);
-            
-            }
-            
-        }
+        
 
-        private void UpdateDragAdorner(Point point)
-        {
-            if(_visualBrushDragAdorner != null)
-            {
-                _visualBrushDragAdorner.UpdatePosition(point.X, point.Y);
-            }
-        }
+
+
 
 
         private void ResetState(Rectangle sender)
@@ -255,10 +279,10 @@ namespace DragObjectsAroundwithAdorner
 
         private void DetachDragAdorner()
         {
-            if(_visualBrushDragAdorner != null)
+            if(_adorner != null)
             {
-                _visualBrushDragAdorner.Destroy();
-                _visualBrushDragAdorner = null;
+                _adorner.Destroy();
+                _adorner = null;
             }
         }
     }
