@@ -31,9 +31,6 @@ namespace DragObjectsAroundwithAdorner
             _isMouseDown = false;
             IsDragging = false;
 
-           
-
-
             this.Loaded += new RoutedEventHandler(DraggableRectangle_Loaded);
         }
 
@@ -55,21 +52,25 @@ namespace DragObjectsAroundwithAdorner
             myRectangle.DragLeave += new DragEventHandler(DraggableRectangle_DragLeave);
 
             _adornerStartPosition = myRectangle.PointToScreen(new Point());
-            Rect rTemp = myRectangle.GetAbsolutePlacement(false);
-            _adornerStartPosition = rTemp.TopLeft;
-            
+            if (System.Windows.Application.Current.MainWindow != null)
+            {
+                   Rect rTemp = myRectangle.GetAbsolutePlacement(false);
+                   _adornerStartPosition = rTemp.TopLeft;
+            }
+
         }
 
        
 
         private void DraggableRectangle_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
+            _isMouseDown = true;
            
         }
 
         private void DraggableRectangle_PreviewMouseMove(object sender, MouseEventArgs e)
         {
-            if (e.LeftButton == MouseButtonState.Pressed && IsDragging == false)
+            if (IsDragging == false && _isMouseDown == true)
             {
                 Console.WriteLine("Calling Drag Method");
                 StartDragInProcAdorner(e);
@@ -194,36 +195,7 @@ namespace DragObjectsAroundwithAdorner
 
         private void DraggableRectangle_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            //Console.WriteLine("Mouse Up... releaseing mouse");
-            //UIElement el = (UIElement)sender;
-            
-
-            //Point pt = e.GetPosition(el);
-
-            //hitResultsList.Clear();
-
-            ////VisualTreeHelper.HitTest(Application.Current.MainWindow, MyHitTestFilter, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(pt));
-            ////VisualTreeHelper.HitTest(Application.Current.MainWindow, MyHitTestFilter, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(e.MouseDevice.GetPosition(Application.Current.MainWindow)));
-            //VisualTreeHelper.HitTest(Application.Current.MainWindow, null, new HitTestResultCallback(MyHitTestResult), new PointHitTestParameters(e.MouseDevice.GetPosition(Application.Current.MainWindow)));
-
-            //if (hitResultsList.Count > 1)
-            //{
-            //    Rectangle theRect = hitResultsList[1] as Rectangle;
-            //  //  Console.WriteLine("Underlying Rect: " + theRect.Name);
-            //}
-            
-            //var underElement = e.MouseDevice.DirectlyOver as Rectangle;
-            //Console.WriteLine("Mouse is over element: {0}", underElement.Name);
-
-            //HitTestResult topElement = VisualTreeHelper.HitTest(Application.Current.MainWindow, e.MouseDevice.GetPosition(Application.Current.MainWindow));
-            
-            //Rectangle newRect = (topElement.VisualHit) as Rectangle;
-            //Console.WriteLine(newRect.Name);
-
-            //el.ReleaseMouseCapture();
-            //ResetState((Rectangle)sender);
-            //DetachDragAdorner();
-            //e.Handled = true;
+            _isMouseDown = false;
            
         }
 
